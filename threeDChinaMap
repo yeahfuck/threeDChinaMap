@@ -1,0 +1,70 @@
+import itertools
+
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from matplotlib.collections import PolyCollection
+import numpy as np
+import cartopy.feature
+from cartopy.mpl.patch import geos_to_path
+import cartopy.crs as ccrs
+import cartopy.io.shapereader as shapereader
+
+#省界线数据
+with open(r'E:\chinaMapFile\CN-border-La.dat') as src:
+    context = ''.join([line for line in src if not line.startswith('#')])
+    blocks = [cnt for cnt in context.split('>') if len(cnt) > 0]
+    borders = [np.fromstring(block, dtype=float, sep=' ') for block in blocks]
+# 从文件中加载中国区域shp
+shpfile = shapereader.Reader(r'E:\chinaMapFile\china_country.shp')
+
+
+fig = plt.figure(figsize=(12.80, 7.20), dpi=100)
+ax = Axes3D(fig, xlim=[70, 140], ylim=[0, 55])
+
+def draw_3dChinaMap():
+    ax.grid(False)
+    ax.margins(0)
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.zaxis.pane.fill = False
+    ax.xaxis.pane.set_edgecolor('none')
+    ax.yaxis.pane.set_edgecolor('none')
+    ax.zaxis.pane.set_edgecolor('none')
+    #
+    ax.zaxis.line.set_visible(False)
+    ax.yaxis.line.set_visible(False)
+    ax.xaxis.line.set_visible(False)
+    ax.set_zticklabels([])
+    ax.yaxis.set_ticks([])
+    ax.xaxis.set_ticks([])
+    ax.set_zticks([])
+
+    target_projection = ccrs.PlateCarree()
+
+    concat = lambda iterable: list(itertools.chain.from_iterable(iterable))
+
+    feature = cartopy.feature.ShapelyFeature(shpfile.geometries(), target_projection, facecolor='teal')
+    geoms = feature.geometries()
+    geoms = [target_projection.project_geometry(geom, feature.crs)
+             for geom in geoms]
+
+    paths = concat(geos_to_path(geom) for geom in geoms)
+
+    polys = concat(path.to_polygons() for path in paths)
+
+    lc = PolyCollection(polys, edgecolor='red',
+                        facecolor='green', closed=True)
+
+    ax.add_collection3d(lc)
+
+    # 绘制中国边界和十段线
+    for line in borders:
+        ax.plot(line[0::2], line[1::2], '-', lw=2, color='k', zdir='z', zorder=2.5)
+    # 改变绘制图像的视角,即相机的位置,azim沿着z轴旋转，elev沿着y轴
+    ax.view_init(azim=275, elev=90)
+
+
+
+
+draw_3dChinaMap()
+plt.show()
